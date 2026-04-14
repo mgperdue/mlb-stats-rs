@@ -1,0 +1,25 @@
+[workspace]
+members = ["mlb-stats-api", "ballpark"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/mgperdue/mlb-stats-rs"
+authors = ["Michael Perdue <michael@mperdue.dev>"]
+
+[workspace.dependencies]
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+mlb-stats-api = { path = "mlb-stats-api", version = "0.1" }
+
+[workspace.dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+wiremock = "0.6"
