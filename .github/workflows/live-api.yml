@@ -1,0 +1,58 @@
+name: Live API Tests
+
+# Run nightly to catch API shape changes before they become fixture drift.
+# Also runnable manually from the Actions tab when needed.
+on:
+  schedule:
+    # 06:00 UTC daily — early morning ET, well before any game activity
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  live-api:
+    name: Integration Tests (Live API)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build -p mlb-stats-api
+
+      # Run ALL tests including #[ignore] integration tests.
+      # These hit statsapi.mlb.com — no auth required.
+      # We run with a single thread to be polite to the API.
+      - name: cargo test --include-ignored (mlb-stats-api)
+        run: >
+          cargo test
+          -p mlb-stats-api
+          --
+          --include-ignored
+          --test-threads=1
+        timeout-minutes: 10
+
+      # Refresh fixture files after a successful live test run,
+      # then open a PR if anything changed.
+      - name: Refresh fixtures
+        if: success()
+        run: bash scripts/fetch_fixtures.sh
+
+      - name: Check for fixture drift
+        if: success()
+        run: |
+          if git diff --quiet mlb-stats-api/tests/fixtures/; then
+            echo "No fixture drift detected."
+          else
+            echo "::warning::Fixture files have changed. Review the diff and commit."
+            git diff --stat mlb-stats-api/tests/fixtures/
+          fi

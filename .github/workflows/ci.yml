@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  check:
+    name: Check & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry & build
+        uses: Swatinem/rust-cache@v2
+
+      # -----------------------------------------------------------------------
+      # Format
+      # -----------------------------------------------------------------------
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      # -----------------------------------------------------------------------
+      # Lint
+      # -----------------------------------------------------------------------
+      - name: cargo clippy (workspace)
+        run: >
+          cargo clippy
+          --workspace
+          --all-targets
+          --features mlb-stats-api/test-utils
+          -- -D warnings
+
+      # -----------------------------------------------------------------------
+      # Build
+      # -----------------------------------------------------------------------
+      - name: cargo build (workspace)
+        run: cargo build --workspace
+
+      - name: cargo build (test-utils feature)
+        run: cargo build -p mlb-stats-api --features test-utils
+
+      # -----------------------------------------------------------------------
+      # Unit & fixture-based tests
+      #
+      # Fixture files are committed to the repository. Tests that don't find
+      # their fixture skip gracefully rather than failing. The #[ignore]
+      # integration tests are NOT run here — see live-api.yml for those.
+      # -----------------------------------------------------------------------
+      - name: cargo test (mlb-stats-api, no network)
+        run: >
+          cargo test
+          -p mlb-stats-api
+          --features test-utils
+        env:
+          # Ensure no integration tests sneak through
+          RUST_TEST_NOCAPTURE: "1"
+
+      - name: cargo test (ballpark, no network)
+        run: cargo test -p ballpark
+
+      # -----------------------------------------------------------------------
+      # Doc tests
+      # -----------------------------------------------------------------------
+      - name: cargo test --doc
+        run: cargo test --workspace --doc --features mlb-stats-api/test-utils
+
+  # ---------------------------------------------------------------------------
+  # MSRV check — ensure we haven't accidentally used post-MSRV features.
+  # MSRV is Rust 1.75 (December 2023) for broad compatibility.
+  # ---------------------------------------------------------------------------
+  msrv:
+    name: MSRV (1.75)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.75"
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo build (MSRV)
+        run: cargo build --workspace

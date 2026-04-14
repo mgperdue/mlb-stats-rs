@@ -1,3 +1,29 @@
 [package]
-name = "mlb-stats-api"
-version = "0.1.0"
+name        = "mlb-stats-api"
+version     = "0.1.0"
+edition.workspace    = true
+license.workspace    = true
+repository.workspace = true
+authors.workspace    = true
+description = "Async Rust client for the unofficial MLB Stats API (statsapi.mlb.com)"
+keywords    = ["mlb", "baseball", "api", "sports", "async"]
+categories  = ["api-bindings", "web-programming::http-client"]
+
+[features]
+default    = []
+test-utils = []  # Enables MockMlbClient for consumer test suites
+
+[dependencies]
+tokio      = { workspace = true }
+reqwest    = { workspace = true }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+thiserror  = { workspace = true }
+tracing    = { workspace = true }
+chrono     = { workspace = true }
+chrono-tz  = { workspace = true }
+
+[dev-dependencies]
+tokio      = { workspace = true }
+tokio-test = { workspace = true }
+wiremock   = { workspace = true }

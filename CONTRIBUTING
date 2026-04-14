@@ -1,0 +1,156 @@
+# Contributing to `mlb-stats-api` + `ballpark`
+
+Thank you for contributing! This document covers the practical details of
+working with the codebase, running tests, and submitting changes.
+
+---
+
+## Prerequisites
+
+- Rust stable toolchain (`rustup toolchain install stable`)
+- `curl` and `jq` (for refreshing fixtures)
+- No API key required — `statsapi.mlb.com` is a public, unauthenticated API
+
+---
+
+## Building
+
+```bash
+cargo build --workspace
+```
+
+To build with the mock client enabled:
+
+```bash
+cargo build --workspace --features mlb-stats-api/test-utils
+```
+
+---
+
+## Testing
+
+### Unit and fixture-based tests (no network)
+
+These run in CI on every push.  Fixture files are committed to the
+repository under `mlb-stats-api/tests/fixtures/`.  Tests skip gracefully
+if a fixture file is missing — see "Refreshing fixtures" below.
+
+```bash
+cargo test --workspace --features mlb-stats-api/test-utils
+```
+
+Or via the workspace alias:
+
+```bash
+cargo test-local
+```
+
+### Mock client tests
+
+The mock client test suite lives in `mlb-stats-api/tests/mock_client.rs`
+and requires the `test-utils` feature:
+
+```bash
+cargo test -p mlb-stats-api --features test-utils
+```
+
+### Integration tests (live API)
+
+Integration tests are marked `#[ignore]` and make real HTTP requests
+to `statsapi.mlb.com`.  Run them manually before submitting a PR that
+touches endpoint methods or model types:
+
+```bash
+cargo test -p mlb-stats-api -- --include-ignored --test-threads=1
+```
+
+Or via the workspace alias:
+
+```bash
+cargo test-live
+```
+
+Be respectful of the API — `--test-threads=1` ensures requests are
+sequential rather than parallel.
+
+---
+
+## Refreshing fixtures
+
+Fixture files are real API responses saved verbatim.  They are committed
+to the repository so that CI can run deserialization tests without network
+access.
+
+To refresh all fixtures:
+
+```bash
+bash scripts/fetch_fixtures.sh
+```
+
+The script uses the **2023 World Series Game 5** (Rangers 5-0 Diamondbacks,
+November 1 2023) as the completed-game fixture.  The gamePk is discovered
+dynamically from the schedule API rather than hardcoded.
+
+After refreshing, commit the updated fixtures along with your changes.
+The nightly CI workflow (`live-api.yml`) detects fixture drift automatically.
+
+---
+
+## Linting and formatting
+
+```bash
+cargo fmt --all
+cargo check-all   # alias for clippy with -D warnings across workspace
+```
+
+CI enforces both — `cargo fmt --check` and `cargo clippy -D warnings`
+must pass before merge.
+
+---
+
+## Adding a new endpoint
+
+1. Add the response model type(s) to the appropriate file in
+   `mlb-stats-api/src/models/`.  Follow the model design rules:
+   - All fields `Option<T>` unless the API guarantees a value
+   - `#[serde(default)]` on all `Vec` fields
+   - `#[serde(rename_all = "camelCase")]` on the struct
+
+2. Add the client method to `MlbClient` in `mlb-stats-api/src/client.rs`.
+   Use `impl Into<XxxId>` for ID parameters.
+
+3. Add the matching method to `MockMlbClient` in `mlb-stats-api/src/mock.rs`
+   with the same signature.  Pick a stable route key and add it to the
+   doc table in `MockMlbClient`'s struct doc comment.
+
+4. Add a fixture fetch call in `scripts/fetch_fixtures.sh`.
+
+5. Add a fixture-based deserialization test in
+   `mlb-stats-api/tests/deserialization.rs`.
+
+6. Add a `#[ignore]` integration test in
+   `mlb-stats-api/tests/integration.rs`.
+
+7. Run `bash scripts/fetch_fixtures.sh` to populate the fixture, then
+   verify the deserialization test passes.
+
+---
+
+## Design principles
+
+See `PROJECT_SEED.md` and the crate-level documentation for the full
+design rationale.  Short version:
+
+- `mlb-stats-api`: faithful, no opinions, no transformations
+- `ballpark`: ergonomic, opinionated, built on top of `mlb-stats-api`
+- When in doubt about field optionality, use `Option<T>`
+- No panics in library code — all failure paths return `Result`
+- Community-first: every design decision should serve the general Rust
+  community, not any specific application
+
+---
+
+## Releasing
+
+Both crates are published independently to crates.io.  See Chat 6
+(Documentation + crates.io prep) in `PROJECT_SEED.md` for the checklist.

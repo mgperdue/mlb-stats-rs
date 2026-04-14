@@ -3,23 +3,23 @@ members = ["mlb-stats-api", "ballpark"]
 resolver = "2"
 
 [workspace.package]
-edition = "2021"
-license = "MIT OR Apache-2.0"
+edition    = "2024"
+license    = "MIT OR Apache-2.0"
 repository = "https://github.com/mgperdue/mlb-stats-rs"
-authors = ["Michael Perdue <michael@mperdue.dev>"]
+authors    = ["Michael Perdue <michael@mperdue.dev>"]
 
 [workspace.dependencies]
-tokio = { version = "1.0", features = ["full"] }
-reqwest = { version = "0.12", features = ["json"] }
-serde = { version = "1", features = ["derive"] }
+# Libraries declare minimal tokio features; binaries/tests get "full" via dev-deps
+reqwest    = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+serde      = { version = "1", features = ["derive"] }
 serde_json = "1"
-thiserror = "2"
-anyhow = "1"
-chrono = { version = "0.4", features = ["serde"] }
-chrono-tz = "0.10"
+thiserror  = "2"
+anyhow     = "1"
+chrono     = { version = "0.4", features = ["serde"] }
+chrono-tz  = { version = "0.10", features = ["serde"] }
+tracing    = "0.1"
 mlb-stats-api = { path = "mlb-stats-api", version = "0.1" }
-
-[workspace.dev-dependencies]
-tokio = { version = "1", features = ["rt", "macros"] }
+tokio              = { version = "1", features = ["full"] }
+tokio-test         = "0.4"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-wiremock = "0.6"
+wiremock           = "0.6"
